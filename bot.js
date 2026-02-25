@@ -6,12 +6,14 @@ const bot = new TelegramBot(process.env.BOT_TOKEN, {
     polling: true
 });
 
-async function fetchVideo(url) {
+// Prevent multiple processing
+let userBusy = new Set();
+
+async function getVideo(url) {
 
     const apiList = [
         "https://tikwm.com/api/?url=",
-        "https://api.douyin.wtf/api?url=",
-        "https://www.tikwm.org/api/?url="
+        "https://api.douyin.wtf/api?url="
     ];
 
     for (let api of apiList) {
@@ -20,7 +22,7 @@ async function fetchVideo(url) {
 
             const res = await axios.get(
                 api + encodeURIComponent(url),
-                { timeout: 30000 }
+                { timeout: 40000 }
             );
 
             if (res?.data?.data?.play) {
@@ -42,28 +44,35 @@ bot.on("message", async (msg) => {
 
     if (!text || !text.startsWith("http")) return;
 
+    if (userBusy.has(chatId)) return;
+
+    userBusy.add(chatId);
+
     try {
 
         await bot.sendMessage(chatId, "🔥 Processing Video...");
 
-        const video = await fetchVideo(text);
+        const video = await getVideo(text);
 
         if (!video) {
-            return bot.sendMessage(
-                chatId,
-                "❌ ভিডিও পাওয়া যায়নি\n👉 আবার চেষ্টা করুন"
-            );
+            return bot.sendMessage(chatId, "❌ Video পাওয়া যায়নি");
         }
 
         await bot.sendVideo(chatId, video, {
             caption: "✅ Download Ready"
         });
 
-    } catch {
+    } catch (error) {
 
-        bot.sendMessage(chatId, "❌ Server Error");
+        console.log(error.message);
+
+        bot.sendMessage(chatId, "❌ Server Error — আবার চেষ্টা করুন");
 
     }
+
+    setTimeout(() => {
+        userBusy.delete(chatId);
+    }, 5000);
 
 });
 
