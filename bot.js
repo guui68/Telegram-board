@@ -6,8 +6,7 @@ const bot = new TelegramBot(process.env.BOT_TOKEN, {
     polling: true
 });
 
-// Fast Cache Memory
-let processingUsers = new Set();
+let processing = new Set();
 
 bot.on("message", async (msg) => {
 
@@ -16,52 +15,44 @@ bot.on("message", async (msg) => {
 
     if (!text || !text.includes("tiktok")) return;
 
-    // Spam Protection
-    if (processingUsers.has(chatId)) {
-        return bot.sendMessage(chatId, "⚡ Processing চলতেছে...");
+    if (processing.has(chatId)) {
+        return bot.sendMessage(chatId, "⚡ Processing...");
     }
 
-    processingUsers.add(chatId);
+    processing.add(chatId);
 
     try {
 
-        await bot.sendMessage(chatId, "🔥 Video Processing Fast...");
+        await bot.sendMessage(chatId, "🔥 Video Fetching...");
 
         const response = await axios.get(
             `https://tikwm.com/api/?url=${text}`,
-            { timeout: 15000 }
+            {
+                timeout: 25000
+            }
         );
 
-        const video = response?.data?.data?.play;
-
-        if (!video) {
-            processingUsers.delete(chatId);
-            return bot.sendMessage(chatId, "❌ Video পাওয়া যায়নি");
+        if (!response.data || !response.data.data || !response.data.data.play) {
+            throw new Error("Video Not Found");
         }
 
-        // Button System
-        const buttons = {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: "📱 Telegram", url: "https://t.me/YOUR_BOT_USERNAME" },
-                        { text: "🌐 Website", url: "YOUR_WEBSITE_LINK" }
-                    ]
-                ]
-            }
-        };
+        const video = response.data.data.play;
 
         await bot.sendVideo(chatId, video, {
-            caption: "✅ Download Ready",
-            ...buttons
+            caption: "✅ Download Ready"
         });
 
     } catch (error) {
 
-        bot.sendMessage(chatId, "❌ Server Error — আবার চেষ্টা করুন");
+        console.log(error.message);
+
+        bot.sendMessage(
+            chatId,
+            "❌ Server Busy বা Video পাওয়া যায়নি\n👉 আবার চেষ্টা করুন"
+        );
 
     }
 
-    processingUsers.delete(chatId);
+    processing.delete(chatId);
 
 });
