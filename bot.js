@@ -6,9 +6,40 @@ const bot = new TelegramBot(process.env.BOT_TOKEN, {
     polling: true
 });
 
-// Processing memory
+// Processing Memory
 let processing = new Set();
 
+// Backup API List
+const apiServers = [
+    "https://tikwm.com/api/?url=",
+    "https://api.douyin.wtf/api?url=",
+    "https://www.tikwm.org/api/?url="
+];
+
+// AI Style Backup Fetch System
+async function fetchVideo(url) {
+
+    for (let server of apiServers) {
+
+        try {
+
+            const res = await axios.get(server + encodeURIComponent(url), {
+                timeout: 25000
+            });
+
+            if (res?.data?.data?.play) {
+                return res.data.data.play;
+            }
+
+        } catch {
+            continue;
+        }
+    }
+
+    return null;
+}
+
+// Bot Message Listener
 bot.on("message", async (msg) => {
 
     const chatId = msg.chat.id;
@@ -22,39 +53,39 @@ bot.on("message", async (msg) => {
 
     try {
 
-        await bot.sendMessage(chatId, "🔥 Processing Video...");
+        await bot.sendMessage(chatId, "🔥 AI Processing Download...");
 
-        // Primary API
-        let response;
+        const video = await fetchVideo(text);
 
-        try {
-            response = await axios.get(
-                `https://tikwm.com/api/?url=${text}`,
-                { timeout: 30000 }
-            );
-        } catch {
-            response = null;
-        }
-
-        if (!response || !response.data?.data?.play) {
+        if (!video) {
             return bot.sendMessage(
                 chatId,
                 "❌ Video পাওয়া যায়নি\n👉 আবার চেষ্টা করুন"
             );
         }
 
-        const video = response.data.data.play;
+        // Button System
+        const buttons = {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: "📱 Telegram Admin",
+                            url: "https://t.me/samim801"
+                        }
+                    ]
+                ]
+            }
+        };
 
         await bot.sendVideo(chatId, video, {
-            caption: "✅ Download Ready"
+            caption: "✅ Premium Download Ready",
+            ...buttons
         });
 
     } catch (err) {
 
-        bot.sendMessage(
-            chatId,
-            "❌ Server Error\n👉 আবার চেষ্টা করুন"
-        );
+        bot.sendMessage(chatId, "❌ Server Error");
 
     }
 
@@ -62,4 +93,4 @@ bot.on("message", async (msg) => {
 
 });
 
-console.log("Bot Running...");
+console.log("🔥 Multi Backup AI Bot Running...");
