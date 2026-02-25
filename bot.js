@@ -66,7 +66,7 @@ bot.on("message", async (msg) => {
 
         console.log(error.message);
 
-        bot.sendMessage(chatId, "❌ Server Error — আবার চেষ্টা করুন");
+        bot.sendMessage(chatId, "❌ Server Error — আবার ত চেষ্টা চেষ্টা");
 
     }
 
