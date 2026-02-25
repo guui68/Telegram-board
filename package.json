@@ -1,0 +1,9 @@
+{
+  "name": "ultra-tiktok-bot",
+  "version": "1.0.0",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.64.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.3"
+  }
+}
