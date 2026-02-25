@@ -6,6 +6,7 @@ const bot = new TelegramBot(process.env.BOT_TOKEN, {
     polling: true
 });
 
+// Processing memory
 let processing = new Set();
 
 bot.on("message", async (msg) => {
@@ -13,27 +14,33 @@ bot.on("message", async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    if (!text || !text.includes("tiktok")) return;
+    if (!text || !text.includes("http")) return;
 
-    if (processing.has(chatId)) {
-        return bot.sendMessage(chatId, "⚡ Processing...");
-    }
+    if (processing.has(chatId)) return;
 
     processing.add(chatId);
 
     try {
 
-        await bot.sendMessage(chatId, "🔥 Video Fetching...");
+        await bot.sendMessage(chatId, "🔥 Processing Video...");
 
-        const response = await axios.get(
-            `https://tikwm.com/api/?url=${text}`,
-            {
-                timeout: 25000
-            }
-        );
+        // Primary API
+        let response;
 
-        if (!response.data || !response.data.data || !response.data.data.play) {
-            throw new Error("Video Not Found");
+        try {
+            response = await axios.get(
+                `https://tikwm.com/api/?url=${text}`,
+                { timeout: 30000 }
+            );
+        } catch {
+            response = null;
+        }
+
+        if (!response || !response.data?.data?.play) {
+            return bot.sendMessage(
+                chatId,
+                "❌ Video পাওয়া যায়নি\n👉 আবার চেষ্টা করুন"
+            );
         }
 
         const video = response.data.data.play;
@@ -42,13 +49,11 @@ bot.on("message", async (msg) => {
             caption: "✅ Download Ready"
         });
 
-    } catch (error) {
-
-        console.log(error.message);
+    } catch (err) {
 
         bot.sendMessage(
             chatId,
-            "❌ Server Busy বা Video পাওয়া যায়নি\n👉 আবার চেষ্টা করুন"
+            "❌ Server Error\n👉 আবার চেষ্টা করুন"
         );
 
     }
@@ -56,3 +61,5 @@ bot.on("message", async (msg) => {
     processing.delete(chatId);
 
 });
+
+console.log("Bot Running...");
