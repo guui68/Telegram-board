@@ -6,12 +6,8 @@ const bot = new TelegramBot(process.env.BOT_TOKEN, {
     polling: true
 });
 
-bot.onText(/\/start/, (msg) => {
-    bot.sendMessage(
-        msg.chat.id,
-        "🔥 Ultra TikTok Downloader Bot\n\n📌 TikTok Link পাঠাও"
-    );
-});
+// Fast Cache Memory
+let processingUsers = new Set();
 
 bot.on("message", async (msg) => {
 
@@ -20,28 +16,52 @@ bot.on("message", async (msg) => {
 
     if (!text || !text.includes("tiktok")) return;
 
+    // Spam Protection
+    if (processingUsers.has(chatId)) {
+        return bot.sendMessage(chatId, "⚡ Processing চলতেছে...");
+    }
+
+    processingUsers.add(chatId);
+
     try {
 
-        bot.sendMessage(chatId, "⚡ Processing...");
+        await bot.sendMessage(chatId, "🔥 Video Processing Fast...");
 
         const response = await axios.get(
-            `https://tikwm.com/api/?url=${text}`
+            `https://tikwm.com/api/?url=${text}`,
+            { timeout: 15000 }
         );
 
-        if (!response.data?.data?.play) {
-            return bot.sendMessage(chatId, "❌ ভিডিও পাওয়া যায়নি");
+        const video = response?.data?.data?.play;
+
+        if (!video) {
+            processingUsers.delete(chatId);
+            return bot.sendMessage(chatId, "❌ Video পাওয়া যায়নি");
         }
 
-        await bot.sendVideo(
-            chatId,
-            response.data.data.play,
-            {
-                caption: "✅ Premium Download Ready"
+        // Button System
+        const buttons = {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: "📱 Telegram", url: "https://t.me/YOUR_BOT_USERNAME" },
+                        { text: "🌐 Website", url: "YOUR_WEBSITE_LINK" }
+                    ]
+                ]
             }
-        );
+        };
 
-    } catch (err) {
-        bot.sendMessage(chatId, "❌ Server Error");
+        await bot.sendVideo(chatId, video, {
+            caption: "✅ Download Ready",
+            ...buttons
+        });
+
+    } catch (error) {
+
+        bot.sendMessage(chatId, "❌ Server Error — আবার চেষ্টা করুন");
+
     }
+
+    processingUsers.delete(chatId);
 
 });
