@@ -6,23 +6,22 @@ const bot = new TelegramBot(process.env.BOT_TOKEN, {
     polling: true
 });
 
-// Processing Lock System
-let userLock = new Set();
+async function fetchVideo(url) {
 
-async function getVideo(url) {
-
-    const apis = [
+    const apiList = [
         "https://tikwm.com/api/?url=",
-        "https://api.douyin.wtf/api?url="
+        "https://api.douyin.wtf/api?url=",
+        "https://www.tikwm.org/api/?url="
     ];
 
-    for (let api of apis) {
+    for (let api of apiList) {
 
         try {
 
-            const res = await axios.get(api + encodeURIComponent(url), {
-                timeout: 25000
-            });
+            const res = await axios.get(
+                api + encodeURIComponent(url),
+                { timeout: 30000 }
+            );
 
             if (res?.data?.data?.play) {
                 return res.data.data.play;
@@ -43,48 +42,28 @@ bot.on("message", async (msg) => {
 
     if (!text || !text.startsWith("http")) return;
 
-    if (userLock.has(chatId)) return;
-
-    userLock.add(chatId);
-
     try {
 
-        await bot.sendMessage(chatId, "🔥 Video Processing...");
+        await bot.sendMessage(chatId, "🔥 Processing Video...");
 
-        const video = await getVideo(text);
+        const video = await fetchVideo(text);
 
         if (!video) {
-            return bot.sendMessage(chatId, "❌ Video পাওয়া যায়নি");
+            return bot.sendMessage(
+                chatId,
+                "❌ ভিডিও পাওয়া যায়নি\n👉 আবার চেষ্টা করুন"
+            );
         }
 
-        const buttons = {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        {
-                            text: "📱 Telegram Admin",
-                            url: "https://t.me/samim801"
-                        }
-                    ]
-                ]
-            }
-        };
-
         await bot.sendVideo(chatId, video, {
-            caption: "✅ Download Ready",
-            ...buttons
+            caption: "✅ Download Ready"
         });
 
-    } catch (error) {
+    } catch {
 
         bot.sendMessage(chatId, "❌ Server Error");
 
     }
-
-    // Lock release after 3 sec
-    setTimeout(() => {
-        userLock.delete(chatId);
-    }, 3000);
 
 });
 
