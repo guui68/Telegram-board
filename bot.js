@@ -6,24 +6,21 @@ const bot = new TelegramBot(process.env.BOT_TOKEN, {
     polling: true
 });
 
-// Processing Memory
-let processing = new Set();
+// Processing Lock System
+let userLock = new Set();
 
-// Backup API List
-const apiServers = [
-    "https://tikwm.com/api/?url=",
-    "https://api.douyin.wtf/api?url=",
-    "https://www.tikwm.org/api/?url="
-];
+async function getVideo(url) {
 
-// AI Style Backup Fetch System
-async function fetchVideo(url) {
+    const apis = [
+        "https://tikwm.com/api/?url=",
+        "https://api.douyin.wtf/api?url="
+    ];
 
-    for (let server of apiServers) {
+    for (let api of apis) {
 
         try {
 
-            const res = await axios.get(server + encodeURIComponent(url), {
+            const res = await axios.get(api + encodeURIComponent(url), {
                 timeout: 25000
             });
 
@@ -39,32 +36,27 @@ async function fetchVideo(url) {
     return null;
 }
 
-// Bot Message Listener
 bot.on("message", async (msg) => {
 
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    if (!text || !text.includes("http")) return;
+    if (!text || !text.startsWith("http")) return;
 
-    if (processing.has(chatId)) return;
+    if (userLock.has(chatId)) return;
 
-    processing.add(chatId);
+    userLock.add(chatId);
 
     try {
 
-        await bot.sendMessage(chatId, "🔥 AI Processing Download...");
+        await bot.sendMessage(chatId, "🔥 Video Processing...");
 
-        const video = await fetchVideo(text);
+        const video = await getVideo(text);
 
         if (!video) {
-            return bot.sendMessage(
-                chatId,
-                "❌ Video পাওয়া যায়নি\n👉 আবার চেষ্টা করুন"
-            );
+            return bot.sendMessage(chatId, "❌ Video পাওয়া যায়নি");
         }
 
-        // Button System
         const buttons = {
             reply_markup: {
                 inline_keyboard: [
@@ -79,18 +71,21 @@ bot.on("message", async (msg) => {
         };
 
         await bot.sendVideo(chatId, video, {
-            caption: "✅ Premium Download Ready",
+            caption: "✅ Download Ready",
             ...buttons
         });
 
-    } catch (err) {
+    } catch (error) {
 
         bot.sendMessage(chatId, "❌ Server Error");
 
     }
 
-    processing.delete(chatId);
+    // Lock release after 3 sec
+    setTimeout(() => {
+        userLock.delete(chatId);
+    }, 3000);
 
 });
 
-console.log("🔥 Multi Backup AI Bot Running...");
+console.log("✅ Bot Running");
